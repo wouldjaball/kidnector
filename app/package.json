@@ -1,0 +1,81 @@
+{
+  "name": "kidnector",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "test": "jest",
+    "lint": "eslint .",
+    "prepare": "husky install",
+    "precommit": "lint-staged",
+    "eas-build-pre-install": "npm install -g expo-cli",
+    "eas-build": "eas build"
+  },
+  "dependencies": {
+    "@react-navigation/native": "^6.1.9",
+    "@react-navigation/stack": "^6.3.20",
+    "@supabase/supabase-js": "^2.39.0",
+    "expo": "^50.0.0",
+    "expo-camera": "^14.2.1",
+    "expo-media-library": "^15.7.0", 
+    "expo-notifications": "^0.27.4",
+    "expo-screen-orientation": "^6.2.0", 
+    "expo-secure-store": "^12.8.1",
+    "expo-splash-screen": "^0.26.4",
+    "react": "18.2.0",
+    "react-native": "0.73.4",
+    "react-native-gesture-handler": "^2.14.0",
+    "react-native-modal": "^13.0.1",
+    "react-native-reanimated": "^3.6.1",
+    "react-native-safe-area-context": "^4.8.2",
+    "react-native-screens": "^3.29.0",
+    "react-native-svg": "^14.1.0",
+    "react-native-uuid": "^2.0.1",
+    "revenue-cat-react-native": "^5.3.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.1",
+    "@typescript-eslint/parser": "^6.13.1",
+    "babel-plugin-module-resolver": "^5.0.0",
+    "eslint": "^8.55.0", 
+    "eslint-config-universe": "^12.0.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "husky": "^8.0.3",
+    "jest": "^29.2.1",
+    "lint-staged": "^15.2.0",
+    "metro-react-native-babel-preset": "^0.77.0",
+    "typescript": "^5.3.2"
+  },
+  "jest": {
+    "preset": "react-native"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "**/*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
+  "eas": {
+    "build": {
+      "preview": {
+        "android": {
+          "buildType": "apk"
+        },
+        "ios": {
+          "buildType": "simulator"
+        }
+      },
+      "production": {}
+    }
+  }
+}
