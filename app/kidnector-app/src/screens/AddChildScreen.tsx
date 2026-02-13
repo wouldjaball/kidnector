@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { addChild } from '../lib/supabase';
 import { useAuth } from '../lib/AuthContext';
+import { validateChildName, validateChildAge } from '../lib/validation';
 
 interface Props {
   navigation: any;
@@ -29,25 +30,30 @@ export default function AddChildScreen({ navigation }: Props) {
   const [isLoading, setIsLoading] = useState(false);
 
   async function handleAddChild() {
-    if (!name.trim()) {
-      Alert.alert('Error', "Please enter your child's name");
+    // Validate name
+    const nameValidation = validateChildName(name);
+    if (!nameValidation.isValid) {
+      Alert.alert('Error', nameValidation.error);
+      return;
+    }
+
+    // Validate age
+    const ageValidation = validateChildAge(age);
+    if (!ageValidation.isValid) {
+      Alert.alert('Error', ageValidation.error);
       return;
     }
 
     const ageNum = parseInt(age);
-    if (isNaN(ageNum) || ageNum < 3 || ageNum > 18) {
-      Alert.alert('Error', 'Please enter a valid age (3-18)');
-      return;
-    }
-
     setIsLoading(true);
     try {
       await addChild(name.trim(), ageNum);
       await refreshChildren();
-      Alert.alert('Success!', `${name} has been added!`, [
+      Alert.alert('Success!', `${name.trim()} has been added to your family!`, [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (error: any) {
+      console.error('Add child error:', error);
       Alert.alert('Error', error.message || 'Failed to add child');
     } finally {
       setIsLoading(false);

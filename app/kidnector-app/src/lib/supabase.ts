@@ -38,11 +38,19 @@ export async function signUp(email: string, password: string, parentName: string
   if (authError) throw authError;
   if (!authData.user) throw new Error('No user returned');
 
-  // Create family record
+  // Calculate trial end date (7 days from now)
+  const trialEndDate = new Date();
+  trialEndDate.setDate(trialEndDate.getDate() + 7);
+
+  // Create family record with trial information
   const { error: familyError } = await supabase.from('families').insert({
     id: authData.user.id,
     email,
     parent_name: parentName,
+    subscription_status: 'trial',
+    trial_ends_at: trialEndDate.toISOString(),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    onboarding_completed: false,
   });
 
   if (familyError) throw familyError;
@@ -237,4 +245,77 @@ export async function uploadRecording(
 
   if (error) throw error;
   return data.path;
+}
+
+// Trial and subscription helpers
+export async function getTrialInfo() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from('families')
+    .select('subscription_status, trial_ends_at, subscription_expires_at')
+    .eq('id', user.id)
+    .single();
+
+  if (error) throw error;
+  
+  if (data.subscription_status === 'trial' && data.trial_ends_at) {
+    const now = new Date();
+    const trialEnd = new Date(data.trial_ends_at);
+    const daysRemaining = Math.max(0, Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+    
+    return {
+      isTrialActive: daysRemaining > 0,
+      daysRemaining,
+      trialEndDate: trialEnd,
+    };
+  }
+  
+  return {
+    isTrialActive: false,
+    daysRemaining: 0,
+    trialEndDate: null,
+  };
+}
+
+export async function checkSubscriptionAccess() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { data, error } = await supabase
+    .from('families')
+    .select('subscription_status, trial_ends_at, subscription_expires_at')
+    .eq('id', user.id)
+    .single();
+
+  if (error) return false;
+
+  const now = new Date();
+
+  // Check trial
+  if (data.subscription_status === 'trial' && data.trial_ends_at) {
+    const trialEnd = new Date(data.trial_ends_at);
+    return now <= trialEnd;
+  }
+
+  // Check active subscription
+  if (data.subscription_status === 'active' && data.subscription_expires_at) {
+    const subEnd = new Date(data.subscription_expires_at);
+    return now <= subEnd;
+  }
+
+  return false;
+}
+
+export async function completeOnboarding() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { error } = await supabase
+    .from('families')
+    .update({ onboarding_completed: true })
+    .eq('id', user.id);
+
+  if (error) throw error;
 }

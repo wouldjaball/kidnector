@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { useAuth } from '../lib/AuthContext';
-import { signOut, getPendingCompletions } from '../lib/supabase';
+import { signOut, getPendingCompletions, getTrialInfo } from '../lib/supabase';
 import { Child } from '../lib/database.types';
 
 interface Props {
@@ -29,10 +29,21 @@ export default function ParentDashboardScreen({ navigation }: Props) {
   const { family, children, refreshChildren } = useAuth();
   const [pendingCompletions, setPendingCompletions] = useState<PendingCompletion[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [trialInfo, setTrialInfo] = useState<{ isTrialActive: boolean; daysRemaining: number; trialEndDate: Date | null } | null>(null);
 
   useEffect(() => {
     loadPendingCompletions();
+    loadTrialInfo();
   }, []);
+
+  async function loadTrialInfo() {
+    try {
+      const info = await getTrialInfo();
+      setTrialInfo(info);
+    } catch (error) {
+      console.error('Error loading trial info:', error);
+    }
+  }
 
   async function loadPendingCompletions() {
     try {
@@ -45,7 +56,7 @@ export default function ParentDashboardScreen({ navigation }: Props) {
 
   async function onRefresh() {
     setRefreshing(true);
-    await Promise.all([refreshChildren(), loadPendingCompletions()]);
+    await Promise.all([refreshChildren(), loadPendingCompletions(), loadTrialInfo()]);
     setRefreshing(false);
   }
 
@@ -181,28 +192,27 @@ export default function ParentDashboardScreen({ navigation }: Props) {
         )}
 
         {/* Trial Banner */}
-        {family?.subscription_status === 'trial' && (
+        {trialInfo?.isTrialActive && (
           <View style={styles.trialBanner}>
-            <Text style={styles.trialText}>
-              🎉 Free trial • {getDaysRemaining(family.trial_ends_at)} days left
-            </Text>
+            <View>
+              <Text style={styles.trialText}>
+                🎉 Free Trial Active
+              </Text>
+              <Text style={styles.trialSubtext}>
+                {trialInfo.daysRemaining} {trialInfo.daysRemaining === 1 ? 'day' : 'days'} remaining
+              </Text>
+            </View>
             <TouchableOpacity
               onPress={() => navigation.navigate('Subscription')}
+              style={styles.upgradeButton}
             >
-              <Text style={styles.trialLink}>Upgrade</Text>
+              <Text style={styles.upgradeButtonText}>Upgrade</Text>
             </TouchableOpacity>
           </View>
         )}
       </ScrollView>
     </View>
   );
-}
-
-function getDaysRemaining(trialEndsAt: string): number {
-  const now = new Date();
-  const end = new Date(trialEndsAt);
-  const diff = end.getTime() - now.getTime();
-  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 }
 
 const styles = StyleSheet.create({
@@ -421,12 +431,24 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   trialText: {
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: '600',
     color: '#2e7d32',
   },
-  trialLink: {
+  trialSubtext: {
+    fontSize: 12,
+    color: '#4caf50',
+    marginTop: 2,
+  },
+  upgradeButton: {
+    backgroundColor: '#667eea',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  upgradeButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#667eea',
+    color: '#fff',
   },
 });

@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { signIn } from '../lib/supabase';
+import { validateEmail } from '../lib/validation';
 
 interface Props {
   navigation: any;
@@ -22,17 +23,42 @@ export default function LoginScreen({ navigation }: Props) {
   const [isLoading, setIsLoading] = useState(false);
 
   async function handleLogin() {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.isValid) {
+      Alert.alert('Error', emailValidation.error);
+      return;
+    }
+
+    if (!password) {
+      Alert.alert('Error', 'Password is required');
       return;
     }
 
     setIsLoading(true);
     try {
-      await signIn(email, password);
+      await signIn(email.trim().toLowerCase(), password);
       // Navigation will happen automatically via AuthContext
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to sign in');
+      console.error('Login error:', error);
+      
+      // Provide more helpful error messages
+      if (error.message?.includes('Invalid login credentials')) {
+        Alert.alert('Error', 'Invalid email or password. Please check your credentials and try again.');
+      } else if (error.message?.includes('Email not confirmed')) {
+        Alert.alert(
+          'Email Not Verified', 
+          'Please check your email and click the verification link before signing in.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Resend Email', 
+              onPress: () => navigation.navigate('EmailVerification', { email: email.trim().toLowerCase() })
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Error', error.message || 'Failed to sign in');
+      }
     } finally {
       setIsLoading(false);
     }

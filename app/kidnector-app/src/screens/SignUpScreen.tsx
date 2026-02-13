@@ -12,6 +12,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { signUp } from '../lib/supabase';
+import { validateEmail, validatePassword, validateParentName, validatePasswordMatch } from '../lib/validation';
 
 interface Props {
   navigation: any;
@@ -25,30 +26,48 @@ export default function SignUpScreen({ navigation }: Props) {
   const [isLoading, setIsLoading] = useState(false);
 
   async function handleSignUp() {
-    if (!parentName || !email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+    // Validate all fields
+    const nameValidation = validateParentName(parentName);
+    if (!nameValidation.isValid) {
+      Alert.alert('Error', nameValidation.error);
       return;
     }
 
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.isValid) {
+      Alert.alert('Error', emailValidation.error);
       return;
     }
 
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      Alert.alert('Error', passwordValidation.error);
+      return;
+    }
+
+    const passwordMatchValidation = validatePasswordMatch(password, confirmPassword);
+    if (!passwordMatchValidation.isValid) {
+      Alert.alert('Error', passwordMatchValidation.error);
       return;
     }
 
     setIsLoading(true);
     try {
-      await signUp(email, password, parentName);
-      Alert.alert(
-        'Success!',
-        'Please check your email to verify your account.',
-        [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
-      );
+      const result = await signUp(email.trim().toLowerCase(), password, parentName.trim());
+      
+      if (result.user && !result.user.email_confirmed_at) {
+        // User needs to verify email
+        navigation.navigate('EmailVerification', { email: email.trim().toLowerCase() });
+      } else {
+        // Email already verified (shouldn't happen in normal flow but handle it)
+        Alert.alert(
+          'Welcome!',
+          'Account created successfully. Let\'s get started!',
+          [{ text: 'OK', onPress: () => navigation.navigate('Onboarding') }]
+        );
+      }
     } catch (error: any) {
+      console.error('Signup error:', error);
       Alert.alert('Error', error.message || 'Failed to create account');
     } finally {
       setIsLoading(false);
